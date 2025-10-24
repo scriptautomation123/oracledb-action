@@ -3,11 +3,16 @@ name: Production Oracle DB Testing
 # Real-world usage patterns for the Oracle DB Action
 # Choose ONE of these approaches based on your needs
 
+# Disabled for development - uncomment when ready for production
+# on:
+#   push:
+#     branches: [main]
+#   pull_request:
+#     branches: [main]
+#   workflow_dispatch:
+
+# Manual trigger only for now
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 
 jobs:
