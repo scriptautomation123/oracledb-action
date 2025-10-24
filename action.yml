@@ -12,15 +12,15 @@ inputs:
   setup-scripts:
     description: Path to SQL setup scripts (comma-separated or glob pattern)
     required: false
-    default: ""
+    default: 
   test-scripts:
     description: Path to SQL test scripts (comma-separated or glob pattern)
     required: false
-    default: ""
+    default: 
   cleanup-scripts:
     description: Path to SQL cleanup scripts (comma-separated or glob pattern)
     required: false
-    default: ""
+    default: 
   oracle-password:
     description: Password for SYS and SYSTEM users
     required: false
@@ -49,6 +49,10 @@ inputs:
     description: SQL query to verify database is ready
     required: false
     default: SELECT 1 FROM DUAL
+  sqlplus-commands:
+    description: Additional SQL*Plus commands to run (semicolon-separated)
+    required: false
+    default: 
 
 outputs:
   oracle-container-id:
@@ -84,13 +88,38 @@ runs:
     - name: Install Oracle Database dependencies
       shell: bash
       run: |
-        echo "::group::Installing Oracle Database dependencies"
+        echo "::group::Installing Oracle Database dependencies and SQL*Plus"
         sudo apt-get update
         # Install basic dependencies
-        sudo apt-get install -y wget unzip
-        
-        # Install modern Oracle driver that doesn't need Instant Client
+        sudo apt-get install -y wget unzip alien libaio1t64 || sudo apt-get install -y wget unzip alien libaio1
+
+        # Download and install Oracle Instant Client with SQL*Plus
+        cd /tmp
+        ORACLE_VERSION="21.13.0.0.0"
+
+        # Download Oracle Instant Client Basic and SQL*Plus RPMs
+        wget -q "https://download.oracle.com/otn_software/linux/instantclient/2113000/oracle-instantclient-basic-${ORACLE_VERSION}-1.x86_64.rpm"
+        wget -q "https://download.oracle.com/otn_software/linux/instantclient/2113000/oracle-instantclient-sqlplus-${ORACLE_VERSION}-1.x86_64.rpm"
+
+        # Convert RPMs to DEBs and install
+        sudo alien -d oracle-instantclient-basic-${ORACLE_VERSION}-1.x86_64.rpm
+        sudo alien -d oracle-instantclient-sqlplus-${ORACLE_VERSION}-1.x86_64.rpm
+        sudo dpkg -i oracle-instantclient-basic_*.deb || sudo apt-get install -f -y
+        sudo dpkg -i oracle-instantclient-sqlplus_*.deb || sudo apt-get install -f -y
+
+        # Set up Oracle environment
+        ORACLE_HOME="/usr/lib/oracle/21/client64"
+        echo "ORACLE_HOME=${ORACLE_HOME}" >> $GITHUB_ENV
+        echo "LD_LIBRARY_PATH=${ORACLE_HOME}/lib:\${LD_LIBRARY_PATH}" >> $GITHUB_ENV
+        echo "PATH=${ORACLE_HOME}/bin:\${PATH}" >> $GITHUB_ENV
+        echo "${ORACLE_HOME}/lib" | sudo tee /etc/ld.so.conf.d/oracle-instantclient.conf
+        sudo ldconfig
+        # Install modern Oracle Python driver (still useful for scripts)
         pip install oracledb
+
+# Verify installations
+        echo "SQL*Plus version:"
+        ${ORACLE_HOME}/bin/sqlplus -v || echo "SQL*Plus installed but version check failed"
         echo "::endgroup::"
 
     - name: Start Oracle Database
@@ -125,7 +154,7 @@ runs:
             docker logs oracle-db --tail 20
             exit 0
           fi
-          
+
           echo "Still waiting... (${ELAPSED}s elapsed)"
           sleep $INTERVAL
           ELAPSED=$((ELAPSED + INTERVAL))
@@ -161,7 +190,7 @@ runs:
           checkov --framework ${{ inputs.checkov-framework }} --soft-fail \
             --output cli --output json --output-file-path . \
             --directory . || true
-          
+
           if [ -f results_json.json ]; then
             echo "Checkov scan completed. Results saved."
             SUMMARY=$(cat results_json.json | python3 -c "import sys, json; data=json.load(sys.stdin); print(f\"Passed: {data.get('summary', {}).get('passed', 0)}, Failed: {data.get('summary', {}).get('failed', 0)}, Skipped: {data.get('summary', {}).get('skipped', 0)}\")" || echo "Summary not available")
@@ -207,10 +236,10 @@ runs:
             print(f"\nExecuting: {filepath}")
             with open(filepath, 'r') as f:
                 sql_content = f.read()
-            
+
             # Split by semicolon and execute each statement
             statements = [s.strip() for s in sql_content.split(';') if s.strip()]
-            
+
             for stmt in statements:
                 try:
                     cursor.execute(stmt)
@@ -223,26 +252,26 @@ runs:
             scripts_input = sys.argv[1]
             password = os.environ.get('ORACLE_PASSWORD', 'OraclePassword123')
             port = os.environ.get('ORACLE_PORT', '1521')
-            
+
             # Use thin mode (no Oracle client required)
             dsn = f"localhost:{port}/XEPDB1"
-            
+
             try:
                 connection = oracledb.connect(user='system', password=password, dsn=dsn)
                 cursor = connection.cursor()
-                
+
                 script_files = expand_paths(scripts_input)
-                
+
                 if not script_files:
                     print(f"No script files found for pattern: {scripts_input}")
                     return
-                
+
                 for script_file in script_files:
                     run_sql_file(cursor, script_file)
-                
+
                 connection.commit()
                 print("\n✓ All scripts executed successfully")
-                
+
                 cursor.close()
                 connection.close()
             except Exception as e:
@@ -272,6 +301,43 @@ runs:
         python3 /tmp/run_sql.py "${{ inputs.test-scripts }}"
 
         echo "status=success" >> $GITHUB_OUTPUT
+        echo "::endgroup::"
+
+    - name: Run SQL*Plus Commands
+      if: inputs.sqlplus-commands != ''
+      shell: bash
+      run: |
+        echo "::group::Running SQL*Plus Commands"
+
+        # Create SQL*Plus script with commands
+        cat > /tmp/sqlplus_commands.sql << 'EOF'
+        WHENEVER SQLERROR EXIT SQL.SQLCODE;
+        WHENEVER OSERROR EXIT FAILURE;
+        SET PAGESIZE 0;
+        SET FEEDBACK OFF;
+        SET ECHO ON;
+
+        -- Custom commands from input
+        ${{ inputs.sqlplus-commands }}
+
+        -- Show database info
+        SELECT 'Database Version: ' || BANNER FROM V$VERSION WHERE ROWNUM = 1;
+        SELECT 'Current User: ' || USER FROM DUAL;
+        SELECT 'Database Name: ' || NAME FROM V$DATABASE;
+
+        EXIT;
+        EOF
+
+        # Run SQL*Plus commands
+        export ORACLE_HOME="/usr/lib/oracle/21/client64"
+        export LD_LIBRARY_PATH="${ORACLE_HOME}/lib:${LD_LIBRARY_PATH}"
+        export PATH="${ORACLE_HOME}/bin:${PATH}"
+
+        CONNECTION_STRING="system/${{ inputs.oracle-password }}@localhost:${{ inputs.oracle-port }}/XEPDB1"
+
+        echo "Running SQL*Plus commands..."
+        ${ORACLE_HOME}/bin/sqlplus -S "${CONNECTION_STRING}" @/tmp/sqlplus_commands.sql
+
         echo "::endgroup::"
 
     - name: Run Cleanup Scripts

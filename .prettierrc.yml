@@ -1,0 +1,25 @@
+# Prettier configuration for automatic YAML formatting
+# This removes trailing whitespace and standardizes formatting
+
+printWidth: 120
+tabWidth: 2
+useTabs: false
+semi: false
+singleQuote: true
+quoteProps: as-needed
+trailingComma: none
+bracketSpacing: true
+arrowParens: avoid
+
+# YAML-specific settings
+overrides:
+  - files: "*.{yml,yaml}"
+    options:
+      printWidth: 80
+      tabWidth: 2
+      useTabs: false
+      # Ensures no trailing whitespace and proper quote handling
+      endOfLine: lf
+      insertFinalNewline: true
+      trimTrailingWhitespace: true
+      singleQuote: false  # Let YAML decide when quotes are needed
