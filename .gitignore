@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+venv/
+env/
+.env
+
+# Build outputs
+dist/
+build/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+results_*.json
+results_*.sarif
+checkov_summary.txt
+*.test.log
+
+# Temporary files
+/tmp/
+*.tmp
+*.bak
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.so
+.pytest_cache/
+
+# Oracle
+*.dmp
+*.log
+*.trc
+*.aud

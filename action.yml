@@ -1,0 +1,318 @@
+name: 'Oracle Database Test Action'
+description: 'Run Oracle Database with setup, test, and cleanup scripts'
+branding:
+  icon: 'database'
+  color: 'red'
+
+inputs:
+  oracle-version:
+    description: 'Oracle Database version (e.g., 21-slim, 23-slim, 19-slim)'
+    required: false
+    default: '21-slim'
+  setup-scripts:
+    description: 'Path to SQL setup scripts (comma-separated or glob pattern)'
+    required: false
+    default: ''
+  test-scripts:
+    description: 'Path to SQL test scripts (comma-separated or glob pattern)'
+    required: false
+    default: ''
+  cleanup-scripts:
+    description: 'Path to SQL cleanup scripts (comma-separated or glob pattern)'
+    required: false
+    default: ''
+  oracle-password:
+    description: 'Password for SYS and SYSTEM users'
+    required: false
+    default: 'OraclePassword123'
+  oracle-port:
+    description: 'Port to expose Oracle Database'
+    required: false
+    default: '1521'
+  wait-timeout:
+    description: 'Timeout in seconds to wait for Oracle to be ready'
+    required: false
+    default: '300'
+  run-checkov:
+    description: 'Run Checkov security scan on SQL scripts'
+    required: false
+    default: 'true'
+  checkov-framework:
+    description: 'Checkov framework to use'
+    required: false
+    default: 'all'
+  fail-on-checkov:
+    description: 'Fail the action if Checkov finds issues'
+    required: false
+    default: 'false'
+  startup-health-check:
+    description: 'SQL query to verify database is ready'
+    required: false
+    default: 'SELECT 1 FROM DUAL'
+
+outputs:
+  oracle-container-id:
+    description: 'Container ID of the Oracle Database'
+    value: ${{ steps.start-oracle.outputs.container-id }}
+  oracle-status:
+    description: 'Status of Oracle Database operations'
+    value: ${{ steps.test-oracle.outputs.status }}
+  checkov-results:
+    description: 'Checkov scan results summary'
+    value: ${{ steps.checkov-scan.outputs.results }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Validate inputs
+      shell: bash
+      run: |
+        echo "::group::Validating inputs"
+        echo "Oracle Version: ${{ inputs.oracle-version }}"
+        echo "Setup Scripts: ${{ inputs.setup-scripts }}"
+        echo "Test Scripts: ${{ inputs.test-scripts }}"
+        echo "Cleanup Scripts: ${{ inputs.cleanup-scripts }}"
+        echo "Oracle Port: ${{ inputs.oracle-port }}"
+        echo "Run Checkov: ${{ inputs.run-checkov }}"
+        echo "::endgroup::"
+
+    - name: Set up Python for Oracle client
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install Oracle Instant Client dependencies
+      shell: bash
+      run: |
+        echo "::group::Installing dependencies"
+        sudo apt-get update
+        sudo apt-get install -y libaio1 wget unzip
+        pip install cx_Oracle
+        echo "::endgroup::"
+
+    - name: Start Oracle Database
+      id: start-oracle
+      shell: bash
+      run: |
+        echo "::group::Starting Oracle Database"
+        CONTAINER_ID=$(docker run -d \
+          --name oracle-db \
+          -p ${{ inputs.oracle-port }}:1521 \
+          -e ORACLE_PWD=${{ inputs.oracle-password }} \
+          -e ORACLE_CHARACTERSET=AL32UTF8 \
+          gvenzl/oracle-xe:${{ inputs.oracle-version }})
+        
+        echo "container-id=$CONTAINER_ID" >> $GITHUB_OUTPUT
+        echo "Oracle Database container started: $CONTAINER_ID"
+        echo "::endgroup::"
+
+    - name: Wait for Oracle Database to be ready
+      shell: bash
+      run: |
+        echo "::group::Waiting for Oracle Database"
+        TIMEOUT=${{ inputs.wait-timeout }}
+        ELAPSED=0
+        INTERVAL=10
+        
+        echo "Waiting up to ${TIMEOUT} seconds for Oracle to be ready..."
+        
+        while [ $ELAPSED -lt $TIMEOUT ]; do
+          if docker exec oracle-db healthcheck.sh >/dev/null 2>&1; then
+            echo "✓ Oracle Database is ready!"
+            docker logs oracle-db --tail 20
+            exit 0
+          fi
+          
+          echo "Still waiting... (${ELAPSED}s elapsed)"
+          sleep $INTERVAL
+          ELAPSED=$((ELAPSED + INTERVAL))
+        done
+        
+        echo "::error::Oracle Database failed to start within ${TIMEOUT} seconds"
+        docker logs oracle-db
+        exit 1
+        echo "::endgroup::"
+
+    - name: Run Checkov Security Scan
+      id: checkov-scan
+      if: inputs.run-checkov == 'true'
+      shell: bash
+      continue-on-error: ${{ inputs.fail-on-checkov != 'true' }}
+      run: |
+        echo "::group::Running Checkov Security Scan"
+        pip install checkov
+        
+        # Create a summary file for Checkov results
+        CHECKOV_SUMMARY="checkov_summary.txt"
+        echo "Checkov Security Scan Results" > $CHECKOV_SUMMARY
+        echo "=============================" >> $CHECKOV_SUMMARY
+        
+        # Scan SQL scripts if any exist
+        SCAN_PATHS=""
+        [ -n "${{ inputs.setup-scripts }}" ] && SCAN_PATHS="$SCAN_PATHS ${{ inputs.setup-scripts }}"
+        [ -n "${{ inputs.test-scripts }}" ] && SCAN_PATHS="$SCAN_PATHS ${{ inputs.test-scripts }}"
+        [ -n "${{ inputs.cleanup-scripts }}" ] && SCAN_PATHS="$SCAN_PATHS ${{ inputs.cleanup-scripts }}"
+        
+        if [ -n "$SCAN_PATHS" ]; then
+          echo "Scanning paths: $SCAN_PATHS"
+          checkov --framework ${{ inputs.checkov-framework }} --soft-fail \
+            --output cli --output json --output-file-path . \
+            --directory . || true
+          
+          if [ -f results_json.json ]; then
+            echo "Checkov scan completed. Results saved."
+            SUMMARY=$(cat results_json.json | python3 -c "import sys, json; data=json.load(sys.stdin); print(f\"Passed: {data.get('summary', {}).get('passed', 0)}, Failed: {data.get('summary', {}).get('failed', 0)}, Skipped: {data.get('summary', {}).get('skipped', 0)}\")" || echo "Summary not available")
+            echo "$SUMMARY" >> $CHECKOV_SUMMARY
+            echo "results<<EOF" >> $GITHUB_OUTPUT
+            cat $CHECKOV_SUMMARY >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
+        else
+          echo "No scripts specified for scanning"
+          echo "No scripts to scan" >> $CHECKOV_SUMMARY
+          echo "results=No scripts to scan" >> $GITHUB_OUTPUT
+        fi
+        
+        cat $CHECKOV_SUMMARY
+        echo "::endgroup::"
+
+    - name: Run Setup Scripts
+      if: inputs.setup-scripts != ''
+      shell: bash
+      run: |
+        echo "::group::Running Setup Scripts"
+        
+        # Create Python script to execute SQL
+        cat > /tmp/run_sql.py << 'EOF'
+        import cx_Oracle
+        import sys
+        import os
+        import glob
+
+        def expand_paths(path_input):
+            """Expand comma-separated paths and glob patterns"""
+            paths = []
+            for item in path_input.split(','):
+                item = item.strip()
+                if '*' in item or '?' in item:
+                    paths.extend(glob.glob(item))
+                elif os.path.exists(item):
+                    paths.append(item)
+            return paths
+
+        def run_sql_file(cursor, filepath):
+            print(f"\nExecuting: {filepath}")
+            with open(filepath, 'r') as f:
+                sql_content = f.read()
+            
+            # Split by semicolon and execute each statement
+            statements = [s.strip() for s in sql_content.split(';') if s.strip()]
+            
+            for stmt in statements:
+                try:
+                    cursor.execute(stmt)
+                    print(f"✓ Executed statement successfully")
+                except cx_Oracle.DatabaseError as e:
+                    print(f"✗ Error: {e}")
+                    raise
+
+        def main():
+            scripts_input = sys.argv[1]
+            password = os.environ.get('ORACLE_PASSWORD', 'OraclePassword123')
+            port = os.environ.get('ORACLE_PORT', '1521')
+            
+            dsn = cx_Oracle.makedsn('localhost', port, service_name='XEPDB1')
+            
+            try:
+                connection = cx_Oracle.connect(user='system', password=password, dsn=dsn)
+                cursor = connection.cursor()
+                
+                script_files = expand_paths(scripts_input)
+                
+                if not script_files:
+                    print(f"No script files found for pattern: {scripts_input}")
+                    return
+                
+                for script_file in script_files:
+                    run_sql_file(cursor, script_file)
+                
+                connection.commit()
+                print("\n✓ All scripts executed successfully")
+                
+                cursor.close()
+                connection.close()
+            except Exception as e:
+                print(f"\n✗ Error: {e}")
+                sys.exit(1)
+
+        if __name__ == '__main__':
+            main()
+        EOF
+        
+        export ORACLE_PASSWORD="${{ inputs.oracle-password }}"
+        export ORACLE_PORT="${{ inputs.oracle-port }}"
+        
+        python3 /tmp/run_sql.py "${{ inputs.setup-scripts }}"
+        echo "::endgroup::"
+
+    - name: Run Test Scripts
+      id: test-oracle
+      if: inputs.test-scripts != ''
+      shell: bash
+      run: |
+        echo "::group::Running Test Scripts"
+        
+        export ORACLE_PASSWORD="${{ inputs.oracle-password }}"
+        export ORACLE_PORT="${{ inputs.oracle-port }}"
+        
+        python3 /tmp/run_sql.py "${{ inputs.test-scripts }}"
+        
+        echo "status=success" >> $GITHUB_OUTPUT
+        echo "::endgroup::"
+
+    - name: Run Cleanup Scripts
+      if: always() && inputs.cleanup-scripts != ''
+      shell: bash
+      run: |
+        echo "::group::Running Cleanup Scripts"
+        
+        export ORACLE_PASSWORD="${{ inputs.oracle-password }}"
+        export ORACLE_PORT="${{ inputs.oracle-port }}"
+        
+        python3 /tmp/run_sql.py "${{ inputs.cleanup-scripts }}" || true
+        echo "::endgroup::"
+
+    - name: Generate Test Report
+      if: always()
+      shell: bash
+      run: |
+        echo "::group::Test Summary"
+        echo "# Oracle Database Test Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Configuration" >> $GITHUB_STEP_SUMMARY
+        echo "- **Oracle Version**: ${{ inputs.oracle-version }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Port**: ${{ inputs.oracle-port }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Setup Scripts**: ${{ inputs.setup-scripts }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Test Scripts**: ${{ inputs.test-scripts }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Cleanup Scripts**: ${{ inputs.cleanup-scripts }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ inputs.run-checkov }}" == "true" ]; then
+          echo "## Security Scan Results" >> $GITHUB_STEP_SUMMARY
+          if [ -f checkov_summary.txt ]; then
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            cat checkov_summary.txt >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi
+        fi
+        echo "::endgroup::"
+
+    - name: Stop Oracle Database
+      if: always()
+      shell: bash
+      run: |
+        echo "::group::Stopping Oracle Database"
+        docker stop oracle-db || true
+        docker rm oracle-db || true
+        echo "Oracle Database container stopped and removed"
+        echo "::endgroup::"
