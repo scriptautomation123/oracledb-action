@@ -47,6 +47,9 @@ jobs:
   oracle-db-tests:
     name: Oracle DB Tests (v${{ inputs.oracle-version }})
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write  # For uploading Checkov SARIF results
     
     steps:
       - name: Checkout repository
