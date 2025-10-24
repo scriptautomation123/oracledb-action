@@ -23,4 +23,5 @@ jobs:
         uses: ./
         with:
           oracle-password: OraclePassword123
-          scripts-directory: examples/sql
+          setup-scripts: examples/sql/setup
+          test-scripts: examples/sql/tests
