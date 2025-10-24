@@ -4,59 +4,61 @@ on:
   workflow_call:
     inputs:
       oracle-version:
-        description: 'Oracle Database version (e.g., 21-slim, 23-slim, 19-slim)'
+        description: Oracle Database version (e.g., 21-slim, 23-slim, 19-slim)
         required: false
         type: string
-        default: '21-slim'
+        default: 21-slim
       setup-scripts:
-        description: 'Path to SQL setup scripts (comma-separated or glob pattern)'
+        description: Path to SQL setup scripts (comma-separated or glob pattern)
         required: false
         type: string
-        default: 'sql/setup/*.sql'
+        default: sql/setup/*.sql
       test-scripts:
-        description: 'Path to SQL test scripts (comma-separated or glob pattern)'
+        description: Path to SQL test scripts (comma-separated or glob pattern)
         required: false
         type: string
-        default: 'sql/tests/*.sql'
+        default: sql/tests/*.sql
       cleanup-scripts:
-        description: 'Path to SQL cleanup scripts (comma-separated or glob pattern)'
+        description: Path to SQL cleanup scripts (comma-separated or glob pattern)
         required: false
         type: string
-        default: 'sql/cleanup/*.sql'
+        default: sql/cleanup/*.sql
       run-checkov:
-        description: 'Run Checkov security scan'
+        description: Run Checkov security scan
         required: false
         type: boolean
         default: true
       fail-on-checkov:
-        description: 'Fail the workflow if Checkov finds issues'
+        description: Fail the workflow if Checkov finds issues
         required: false
         type: boolean
         default: false
       working-directory:
-        description: 'Working directory for the job'
+        description: Working directory for the job
         required: false
         type: string
-        default: '.'
+        default: .
     secrets:
       oracle-password:
-        description: 'Password for Oracle Database'
+        description: Password for Oracle Database
         required: false
 
 jobs:
   oracle-db-tests:
     name: Oracle DB Tests (v${{ inputs.oracle-version }})
     runs-on: ubuntu-latest
+    # trunk-ignore(checkov/CKV2_GHA_1)
+    # trunk-ignore-all(permissions)
     permissions:
       contents: read
-      security-events: write  # For uploading Checkov SARIF results
-    
+      security-events: write # For uploading Checkov SARIF results
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Run Oracle Database Tests
-        uses: scriptautomation123/oracledb-action@v1
+        uses: ./
         with:
           oracle-version: ${{ inputs.oracle-version }}
           setup-scripts: ${{ inputs.setup-scripts }}

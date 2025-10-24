@@ -1,10 +1,14 @@
 name: Example Oracle DB Test Workflow
 
+# This is an example workflow demonstrating the oracledb-action usage
+# Note: For the reusable workflow example, you need to set up the ORACLE_PASSWORD secret
+# in your repository settings: Settings > Secrets and variables > Actions
+
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -15,18 +19,18 @@ jobs:
     permissions:
       contents: read
       actions: read
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Run Oracle Database Tests
-        uses: scriptautomation123/oracledb-action@v1
+        uses: ./
         with:
-          oracle-version: '21-slim'
-          setup-scripts: 'examples/sql/setup/*.sql'
-          test-scripts: 'examples/sql/tests/*.sql'
-          cleanup-scripts: 'examples/sql/cleanup/*.sql'
+          oracle-version: 21-slim
+          setup-scripts: examples/sql/setup/*.sql
+          test-scripts: examples/sql/tests/*.sql
+          cleanup-scripts: examples/sql/cleanup/*.sql
           run-checkov: true
           fail-on-checkov: false
 
@@ -44,14 +48,16 @@ jobs:
     name: Test with Reusable Workflow
     permissions:
       contents: read
+      security-events: write # Required for reusable workflow that uploads SARIF
     uses: ./.github/workflows/oracle-db-reusable.yml
     with:
-      oracle-version: '21-slim'
-      setup-scripts: 'examples/sql/setup/*.sql'
-      test-scripts: 'examples/sql/tests/*.sql'
-      cleanup-scripts: 'examples/sql/cleanup/*.sql'
+      oracle-version: 21-slim
+      setup-scripts: examples/sql/setup/*.sql
+      test-scripts: examples/sql/tests/*.sql
+      cleanup-scripts: examples/sql/cleanup/*.sql
       run-checkov: true
     secrets:
+      # Note: ORACLE_PASSWORD secret needs to be configured in repository settings
       oracle-password: ${{ secrets.ORACLE_PASSWORD }}
 
   # Example 3: Matrix testing with multiple Oracle versions
@@ -63,20 +69,20 @@ jobs:
       actions: read
     strategy:
       matrix:
-        oracle-version: ['21-slim', '23-slim']
+        oracle-version: [21-slim, 23-slim]
       fail-fast: false
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Run Oracle DB Tests (v${{ matrix.oracle-version }})
-        uses: scriptautomation123/oracledb-action@v1
+        uses: ./
         with:
           oracle-version: ${{ matrix.oracle-version }}
-          setup-scripts: 'examples/sql/setup/*.sql'
-          test-scripts: 'examples/sql/tests/*.sql'
-          cleanup-scripts: 'examples/sql/cleanup/*.sql'
+          setup-scripts: examples/sql/setup/*.sql
+          test-scripts: examples/sql/tests/*.sql
+          cleanup-scripts: examples/sql/cleanup/*.sql
 
   # Example 4: Security-focused workflow with Checkov
   security-scan:
@@ -84,20 +90,20 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      security-events: write  # For SARIF upload
-    
+      security-events: write # For SARIF upload
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Run Security Scan
-        uses: scriptautomation123/oracledb-action@v1
+        uses: ./
         with:
-          oracle-version: '21-slim'
-          setup-scripts: 'examples/sql/setup/*.sql'
-          test-scripts: 'examples/sql/tests/*.sql'
+          oracle-version: 21-slim
+          setup-scripts: examples/sql/setup/*.sql
+          test-scripts: examples/sql/tests/*.sql
           run-checkov: true
-          fail-on-checkov: true  # Fail if security issues found
+          fail-on-checkov: true # Fail if security issues found
 
       - name: Upload Checkov SARIF
         if: always()
