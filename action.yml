@@ -86,7 +86,9 @@ runs:
       run: |
         echo "::group::Installing dependencies"
         sudo apt-get update
-        sudo apt-get install -y libaio1 wget unzip
+        # Install libaio1t64 for Ubuntu 24.04+ or libaio1 for older versions
+        sudo apt-get install -y libaio1t64 || sudo apt-get install -y libaio1
+        sudo apt-get install -y wget unzip
         pip install cx_Oracle
         echo "::endgroup::"
 
