@@ -9,22 +9,25 @@
 if [[ $# -eq 1 ]]; then
 	# Clean specific file
 	file="$1"
-	
+
 	# Handle both relative and absolute paths
-	if [[ ! -f "$file" ]]; then
-		echo "❌ Error: File not found: $file"
+	if [[ ! -f ${file} ]]; then
+		echo "❌ Error: File not found: ${file}"
 		exit 1
 	fi
-	
+
 	# Get the absolute path for consistent handling
-	if [[ "$file" = "/"* ]]; then
+	if [[ ${file} == "/"* ]]; then
 		# Already absolute path
-		abs_file="$file"
+		abs_file="${file}"
 	else
 		# Convert relative path to absolute
-		abs_file="$(realpath "$file" 2>/dev/null)" || abs_file="$(cd "$(dirname "$file")" && pwd)/$(basename "$file")"
+		abs_file="$(realpath "${file}" 2>/dev/null || true)"
+		if [[ -z ${abs_file} ]]; then
+			abs_file="$(cd "$(dirname "${file}")" && pwd)/$(basename "${file}")"
+		fi
 	fi
-	
+
 	echo "Cleaning ${abs_file}..."
 
 	# Remove trailing whitespace and comprehensive redundant quotes
@@ -42,7 +45,7 @@ if [[ $# -eq 1 ]]; then
 	else
 		echo "✅ Trailing whitespace cleaned"
 	fi
-	
+
 	echo "✅ Quote cleanup completed for: ${abs_file}"
 else
 	# Clean all YAML files

@@ -28,10 +28,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Test with Oracle Database
         uses: scriptautomation123/oracledb-action@main
         with:
@@ -43,7 +43,7 @@ jobs:
 
 ### 2. Organize Your SQL Scripts
 
-```
+```text
 your-repo/
 ├── sql/
 │   ├── setup/
@@ -67,6 +67,7 @@ Push your changes and watch your Oracle Database tests run automatically.
 ## 🔧 Configuration Optio
 
 ### Oracle Versions Available
+
 - `21-slim` (recommended, default)
 - `23-slim` (latest features)
 - `19-slim` (LTS version)
@@ -79,19 +80,19 @@ Push your changes and watch your Oracle Database tests run automatically.
   with:
     # Database version
     oracle-version: 21-slim
-    
+
     # SQL script paths (glob patterns supported)
     setup-scripts: sql/setup/*.sql
     test-scripts: sql/tests/*.sql
     cleanup-scripts: sql/cleanup/*.sql
-    
+
     # Connection settings
-    oracle-password: OraclePassword123  # Default password
-    wait-timeout: 300                   # Container startup timeout
-    
+    oracle-password: OraclePassword123 # Default password
+    wait-timeout: 300 # Container startup timeout
+
     # Security scanning
-    run-checkov: true                   # Enable security checks
-    fail-on-checkov: false             # Don't fail on security warnings
+    run-checkov: true # Enable security checks
+    fail-on-checkov: false # Don't fail on security warnings
 ```
 
 ### Advanced Configuration
@@ -106,18 +107,18 @@ Push your changes and watch your Oracle Database tests run automatically.
       database/data/*.sql
     test-scripts: tests/**/*.sql
     cleanup-scripts: cleanup/drop_all.sql
-    
+
     # SQL*Plus commands for advanced testing
     sqlplus-commands: |
       SELECT 'Database Status: ' || STATUS FROM V$INSTANCE;
       SELECT COUNT(*) as "Total Tables" FROM USER_TABLES;
       EXEC DBMS_STATS.GATHER_SCHEMA_STATS(USER);
-    
+
     # Security and compliance
     run-checkov: true
     checkov-framework: dockerfile,secrets,yaml
     fail-on-checkov: true
-    
+
     # Performance tuning
     wait-timeout: 600
     oracle-password: ${{ secrets.ORACLE_PASSWORD }}
@@ -130,6 +131,7 @@ Push your changes and watch your Oracle Database tests run automatically.
 This repository includes several pre-configured workflow examples:
 
 ### 🔄 Development Workflow (`ci.yml`)
+
 - **Purpose**: Fast validation for every commit
 - **Triggers**: Push to main/develop/feature branches, PRs
 - **Features**: Action validation, shell script checks, code quality with Trunk
@@ -145,24 +147,28 @@ on:
 ```
 
 ### 📋 Example Usage (`example-usage.yml`)
+
 - **Purpose**: Comprehensive usage demonstrations
 - **Triggers**: Changes to action files, manual trigger, weekly schedule
 - **Features**: 4 different usage patterns, matrix testing, security scans
 - **Runtime**: ~15-20 minutes
 
 ### 🚀 Production Usage (`production-usage.yml`)
+
 - **Purpose**: Production-ready testing strategy
 - **Triggers**: Manual dispatch, scheduled runs
 - **Features**: Multi-environment testing, performance monitoring
 - **Runtime**: ~10-15 minutes
 
 ### 🏷️ Release Workflow (`release.yml`)
+
 - **Purpose**: Comprehensive testing before releases
 - **Triggers**: Version tags (`v*.*.*`), manual dispatch
 - **Features**: Matrix testing (all Oracle versions), security compliance, automated releases
 - **Runtime**: ~25-30 minutes
 
 ### 🔄 Reusable Workflow (`oracle-db-reusable.yml`)
+
 - **Purpose**: Shareable workflow for other repositories
 - **Usage**: Call from other workflows with `uses: ./.github/workflows/oracle-db-reusable.yml`
 
@@ -171,6 +177,7 @@ on:
 ## 🎯 Common Use Cases
 
 ### 1. Simple Database Testing
+
 ```yaml
 - uses: scriptautomation123/oracledb-action@main
   with:
@@ -180,6 +187,7 @@ on:
 ```
 
 ### 2. Multi-Version Testing
+
 ```yaml
 strategy:
   matrix:
@@ -194,6 +202,7 @@ steps:
 ```
 
 ### 3. Security-First Testing
+
 ```yaml
 - uses: scriptautomation123/oracledb-action@main
   with:
@@ -206,6 +215,7 @@ steps:
 ```
 
 ### 4. Performance Testing
+
 ```yaml
 - uses: scriptautomation123/oracledb-action@main
   with:
@@ -224,6 +234,7 @@ steps:
 ## 🛠️ Development Tools
 
 ### Code Quality (Trunk Integration)
+
 The repository includes automated code quality tools:
 
 ```bash
@@ -238,6 +249,7 @@ trunk check --fix --all
 ```
 
 ### YAML Formatting
+
 Clean up YAML files automatically:
 
 ```bash
@@ -255,18 +267,21 @@ Clean up YAML files automatically:
 ### Common Issues
 
 1. **Container startup timeout**
+
    ```yaml
    with:
-     wait-timeout: 600  # Increase timeout
+     wait-timeout: 600 # Increase timeout
    ```
 
 2. **SQL script not found**
+
    ```yaml
    with:
-     setup-scripts: ./sql/setup/*.sql  # Use explicit path
+     setup-scripts: ./sql/setup/*.sql # Use explicit path
    ```
 
 3. **Permission denied**
+
    ```yaml
    permissions:
      contents: read
@@ -276,10 +291,11 @@ Clean up YAML files automatically:
 4. **Security scan failures**
    ```yaml
    with:
-     fail-on-checkov: false  # Don't fail on warnings
+     fail-on-checkov: false # Don't fail on warnings
    ```
 
 ### Debug Mode
+
 Enable verbose logging:
 
 ```yaml
@@ -296,6 +312,7 @@ Enable verbose logging:
 ## 📊 Workflow Triggering Strategies
 
 ### Development (Frequent)
+
 ```yaml
 on:
   push:
@@ -306,16 +323,18 @@ on:
 ```
 
 ### Production (Selective)
+
 ```yaml
 on:
   push:
     tags: ['v*.*.*']
   schedule:
-    - cron: '0 2 * * 1'  # Weekly Monday 2 AM
+    - cron: '0 2 * * 1' # Weekly Monday 2 AM
   workflow_dispatch:
 ```
 
 ### Feature Branches (On-Demand)
+
 ```yaml
 on:
   push:
@@ -371,6 +390,7 @@ gh workflow run example-usage.yml
 ```
 
 The built-in examples include:
+
 - ✅ **Table Creation Tests** (`examples/sql/setup/01_create_tables.sql`)
 - ✅ **Constraint Validation** (`examples/sql/tests/01_test_tables.sql`)
 - ✅ **Procedure Testing** (`examples/sql/tests/02_test_procedures.sql`)
@@ -394,12 +414,12 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Test Action with Examples
-        uses: ./  # Use local action
+        uses: ./ # Use local action
         with:
           oracle-version: 21-slim
           setup-scripts: examples/sql/setup/*.sql
@@ -423,7 +443,7 @@ Test in your own repository immediately:
 # .github/workflows/test-oracle-action.yml
 name: Test Oracle Database Action
 
-on: 
+on:
   workflow_dispatch:
 
 jobs:
@@ -431,15 +451,15 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      
+
     steps:
       - uses: actions/checkout@v4
-      
+
       # Create test SQL files inline
       - name: Create test SQL scripts
         run: |
           mkdir -p sql/{setup,tests,cleanup}
-          
+
           # Setup script
           cat > sql/setup/01_setup.sql << 'EOF'
           CREATE TABLE validation_test (
@@ -450,7 +470,7 @@ jobs:
           INSERT INTO validation_test (test_name) VALUES ('Action Validation Test');
           COMMIT;
           EOF
-          
+
           # Test script  
           cat > sql/tests/01_test.sql << 'EOF'
           DECLARE
@@ -464,12 +484,12 @@ jobs:
           END;
           /
           EOF
-          
+
           # Cleanup script
           cat > sql/cleanup/01_cleanup.sql << 'EOF'
           DROP TABLE validation_test;
           EOF
-      
+
       - name: Run Oracle Database Tests
         uses: scriptautomation123/oracledb-action@main
         with:
@@ -509,7 +529,7 @@ Watch the repository's own workflows for validation:
 
 1. **CI Workflow** (`ci.yml`): Runs on every push
    - Validates action structure
-   - Checks shell script syntax  
+   - Checks shell script syntax
    - Runs code quality tools
 
 2. **Example Usage** (`example-usage.yml`): Comprehensive testing
@@ -538,19 +558,22 @@ Use this checklist to validate your setup:
 ### 🚨 Common Validation Issues
 
 **Container won't start:**
+
 ```yaml
 with:
-  wait-timeout: 600  # Increase timeout
-  oracle-version: 21-slim  # Try different version
+  wait-timeout: 600 # Increase timeout
+  oracle-version: 21-slim # Try different version
 ```
 
 **SQL scripts fail:**
+
 ```yaml
 with:
-  setup-scripts: ./sql/setup/*.sql  # Use explicit paths
+  setup-scripts: ./sql/setup/*.sql # Use explicit paths
 ```
 
 **Permission errors:**
+
 ```yaml
 permissions:
   contents: read
@@ -558,15 +581,16 @@ permissions:
 ```
 
 **Security scan failures:**
+
 ```yaml
 with:
-  fail-on-checkov: false  # Don't fail on warnings initially
+  fail-on-checkov: false # Don't fail on warnings initially
 ```
 
 ### 💡 Pro Validation Tips
 
 1. **Start with the examples** - They're proven to work
-2. **Test incrementally** - Add one script at a time  
+2. **Test incrementally** - Add one script at a time
 3. **Check the logs** - Action provides detailed output
 4. **Use different Oracle versions** - Test compatibility
 5. **Enable debug mode** - Set `RUNNER_DEBUG: 1` for verbose logs
@@ -592,6 +616,7 @@ gh auth status
 ### 📋 Essential Workflow Commands
 
 #### **List & View Workflows**
+
 ```bash
 # List all workflows in current repo
 gh workflow list
@@ -608,6 +633,7 @@ gh run view <run-id>
 ```
 
 #### **🚀 Trigger Workflows**
+
 ```bash
 # Run workflow_dispatch workflows
 gh workflow run "Example Oracle DB Test Workflow"
@@ -621,6 +647,7 @@ gh workflow run ci.yml --ref feature/my-branch
 ```
 
 #### **📊 Monitor Workflow Runs**
+
 ```bash
 # Watch a running workflow in real-time
 gh run watch
@@ -704,6 +731,7 @@ gh variable set ORACLE_VERSION --body "21-slim"
 ### 🚀 Advanced Usage
 
 #### **Bulk Operations**
+
 ```bash
 # Run multiple workflows
 for workflow in ci.yml example-usage.yml; do
@@ -716,6 +744,7 @@ gh run list --json | jq '.[] | "\(.workflowName): \(.status)"'
 ```
 
 #### **Integration with Scripts**
+
 ```bash
 #!/bin/bash
 # automated-test.sh
@@ -739,6 +768,7 @@ done
 ```
 
 #### **Workflow Templates**
+
 ```bash
 # Create a new workflow from template
 gh workflow create
@@ -751,24 +781,28 @@ gh workflow enable ci.yml
 ### 💡 Pro Tips for Oracle Action
 
 1. **Quick Validation**:
+
    ```bash
    # Test your changes quickly
    gh workflow run ci.yml && gh run watch
    ```
 
 2. **Debug Failed Tests**:
+
    ```bash
    # Get logs from failed Oracle tests
    gh run list --status failure --limit 1 --json | jq -r '.[0].databaseId' | xargs gh run view --log
    ```
 
 3. **Matrix Testing**:
+
    ```bash
    # Run full matrix test (all Oracle versions)
    gh workflow run release.yml -f test_matrix=true
    ```
 
 4. **Security Monitoring**:
+
    ```bash
    # Check security scan results
    gh run list --workflow=production-usage.yml --json | jq '.[] | select(.conclusion=="failure")'

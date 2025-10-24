@@ -49,7 +49,15 @@ for file in ${yaml_files}; do
 				value_part="${BASH_REMATCH[3]}"
 				
 				# Remove quotes if value doesn't need them
-				if [[ ! ${value_part} =~ [\:\[\]\{\}\|\>\<\@\&\*\!\%\$] ]] && [[ ${value_part} != *" "* ]] || [[ ${value_part} =~ ^[a-zA-Z0-9._/-]+$ ]] || [[ ${value_part} =~ ^[0-9 */-]+$ ]]; then
+				needs_quotes=false
+				if [[ "${value_part}" =~ [:\[\]{}|><@&*!%$] ]] || [[ "${value_part}" == *" "* ]]; then
+					needs_quotes=true
+				fi
+				if [[ "${value_part}" =~ ^[a-zA-Z0-9._/-]+$ ]] || [[ "${value_part}" =~ ^[0-9\ */-]+$ ]]; then
+					needs_quotes=false
+				fi
+				
+				if [[ "${needs_quotes}" == "false" ]]; then
 					echo "${array_prefix}${value_part}" >>"${temp_file}"
 					changes_made=true
 				else

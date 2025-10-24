@@ -92,7 +92,7 @@ runs:
         sudo apt-get update
         # Install basic dependencies
         sudo apt-get install -y wget unzip alien libaio1t64
-        
+
         # Ensure libaio compatibility for SQL*Plus
         sudo ln -sf /lib/x86_64-linux-gnu/libaio.so.1t64 /lib/x86_64-linux-gnu/libaio.so.1 || true
 
@@ -245,18 +245,29 @@ runs:
             with open(filepath, 'r') as f:
                 sql_content = f.read()
 
-            # Split by semicolon and execute each statement
-            statements = [s.strip() for s in sql_content.split(';') if s.strip()]
+            # Handle both semicolon and slash terminators for Oracle
+            # First split by forward slash (for PL/SQL blocks), then by semicolon
+            blocks = sql_content.split('/')
+            statements = []
 
-            for stmt in statements:
+            for block in blocks:
+                block = block.strip()
+                if not block:
+                    continue
+
+                # If block doesn't contain PL/SQL keywords, split by semicolon
+                if not any(keyword in block.upper() for keyword in ['BEGIN', 'DECLARE', 'CREATE OR REPLACE']):
+                    sub_statements = [s.strip() for s in block.split(';') if s.strip()]
+                    statements.extend(sub_statements)
+                else:
+                    # PL/SQL block - execute as-is
+                    statements.append(block)            for stmt in statements:
                 try:
                     cursor.execute(stmt)
                     print(f"✓ Executed statement successfully")
                 except oracledb.DatabaseError as e:
                     print(f"✗ Error: {e}")
-                    raise
-
-        def main():
+                    raise        def main():
             scripts_input = sys.argv[1]
             password = os.environ.get('ORACLE_PASSWORD', 'OraclePassword123')
             port = os.environ.get('ORACLE_PORT', '1521')
