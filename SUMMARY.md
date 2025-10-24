@@ -114,7 +114,7 @@ Comprehensive documentation suite:
 
 5. **Flexibility**
    - Multiple Oracle versions
-   - Configurable all parameters
+   - All parameters configurable
    - Glob pattern support
    - Matrix testing support
 
