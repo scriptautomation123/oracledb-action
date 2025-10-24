@@ -1,0 +1,96 @@
+name: Example Oracle DB Test Workflow
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  # Example 1: Using the composite action directly
+  test-with-action:
+    name: Test with Composite Action
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Oracle Database Tests
+        uses: scriptautomation123/oracledb-action@v1
+        with:
+          oracle-version: '21-slim'
+          setup-scripts: 'examples/sql/setup/*.sql'
+          test-scripts: 'examples/sql/tests/*.sql'
+          cleanup-scripts: 'examples/sql/cleanup/*.sql'
+          run-checkov: true
+          fail-on-checkov: false
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            results_*.json
+            checkov_summary.txt
+
+  # Example 2: Using the reusable workflow
+  test-with-reusable-workflow:
+    name: Test with Reusable Workflow
+    uses: ./.github/workflows/oracle-db-reusable.yml
+    with:
+      oracle-version: '21-slim'
+      setup-scripts: 'examples/sql/setup/*.sql'
+      test-scripts: 'examples/sql/tests/*.sql'
+      cleanup-scripts: 'examples/sql/cleanup/*.sql'
+      run-checkov: true
+    secrets:
+      oracle-password: ${{ secrets.ORACLE_PASSWORD }}
+
+  # Example 3: Matrix testing with multiple Oracle versions
+  test-matrix:
+    name: Test Multiple Versions
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        oracle-version: ['21-slim', '23-slim']
+      fail-fast: false
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Oracle DB Tests (v${{ matrix.oracle-version }})
+        uses: scriptautomation123/oracledb-action@v1
+        with:
+          oracle-version: ${{ matrix.oracle-version }}
+          setup-scripts: 'examples/sql/setup/*.sql'
+          test-scripts: 'examples/sql/tests/*.sql'
+          cleanup-scripts: 'examples/sql/cleanup/*.sql'
+
+  # Example 4: Security-focused workflow with Checkov
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Security Scan
+        uses: scriptautomation123/oracledb-action@v1
+        with:
+          oracle-version: '21-slim'
+          setup-scripts: 'examples/sql/setup/*.sql'
+          test-scripts: 'examples/sql/tests/*.sql'
+          run-checkov: true
+          fail-on-checkov: true  # Fail if security issues found
+
+      - name: Upload Checkov SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results_sarif.sarif
+        continue-on-error: true
