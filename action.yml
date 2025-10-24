@@ -100,7 +100,7 @@ runs:
         CONTAINER_ID=$(docker run -d \
           --name oracle-db \
           -p ${{ inputs.oracle-port }}:1521 \
-          -e ORACLE_PWD=${{ inputs.oracle-password }} \
+          -e ORACLE_PASSWORD=${{ inputs.oracle-password }} \
           -e ORACLE_CHARACTERSET=AL32UTF8 \
           gvenzl/oracle-xe:${{ inputs.oracle-version }})
 
