@@ -232,7 +232,11 @@ runs:
                 item = item.strip()
                 if '*' in item or '?' in item:
                     paths.extend(glob.glob(item))
-                elif os.path.exists(item):
+                elif os.path.isdir(item):
+                    # If it's a directory, find all .sql files in it
+                    sql_files = glob.glob(os.path.join(item, '*.sql'))
+                    paths.extend(sorted(sql_files))
+                elif os.path.isfile(item):
                     paths.append(item)
             return paths
 
