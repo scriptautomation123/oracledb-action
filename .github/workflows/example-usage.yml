@@ -44,6 +44,7 @@ jobs:
     name: Test with Reusable Workflow
     permissions:
       contents: read
+      security-events: write  # Required for reusable workflow to upload SARIF results
     uses: ./.github/workflows/oracle-db-reusable.yml
     with:
       oracle-version: '21-slim'
