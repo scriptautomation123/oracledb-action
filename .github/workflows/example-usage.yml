@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Oracle Database Tests
-        uses: scriptautomation123/oracledb-action@v1
+        uses: ./
         with:
           oracle-version: '21-slim'
           setup-scripts: 'examples/sql/setup/*.sql'
@@ -71,7 +71,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Oracle DB Tests (v${{ matrix.oracle-version }})
-        uses: scriptautomation123/oracledb-action@v1
+        uses: ./
         with:
           oracle-version: ${{ matrix.oracle-version }}
           setup-scripts: 'examples/sql/setup/*.sql'
@@ -91,7 +91,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Security Scan
-        uses: scriptautomation123/oracledb-action@v1
+        uses: ./
         with:
           oracle-version: '21-slim'
           setup-scripts: 'examples/sql/setup/*.sql'
