@@ -81,15 +81,16 @@ runs:
       with:
         python-version: 3.11
 
-    - name: Install Oracle Instant Client dependencies
+    - name: Install Oracle Database dependencies
       shell: bash
       run: |
-        echo "::group::Installing dependencies"
+        echo "::group::Installing Oracle Database dependencies"
         sudo apt-get update
-        # Install libaio1t64 for Ubuntu 24.04+ or libaio1 for older versions
-        sudo apt-get install -y libaio1t64 || sudo apt-get install -y libaio1
+        # Install basic dependencies
         sudo apt-get install -y wget unzip
-        pip install cx_Oracle
+        
+        # Install modern Oracle driver that doesn't need Instant Client
+        pip install oracledb
         echo "::endgroup::"
 
     - name: Start Oracle Database
@@ -186,7 +187,7 @@ runs:
 
         # Create Python script to execute SQL
         cat > /tmp/run_sql.py << 'EOF'
-        import cx_Oracle
+        import oracledb
         import sys
         import os
         import glob
@@ -214,7 +215,7 @@ runs:
                 try:
                     cursor.execute(stmt)
                     print(f"✓ Executed statement successfully")
-                except cx_Oracle.DatabaseError as e:
+                except oracledb.DatabaseError as e:
                     print(f"✗ Error: {e}")
                     raise
 
@@ -223,10 +224,11 @@ runs:
             password = os.environ.get('ORACLE_PASSWORD', 'OraclePassword123')
             port = os.environ.get('ORACLE_PORT', '1521')
             
-            dsn = cx_Oracle.makedsn('localhost', port, service_name='XEPDB1')
+            # Use thin mode (no Oracle client required)
+            dsn = f"localhost:{port}/XEPDB1"
             
             try:
-                connection = cx_Oracle.connect(user='system', password=password, dsn=dsn)
+                connection = oracledb.connect(user='system', password=password, dsn=dsn)
                 cursor = connection.cursor()
                 
                 script_files = expand_paths(scripts_input)
