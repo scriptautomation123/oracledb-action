@@ -91,7 +91,10 @@ runs:
         echo "::group::Installing Oracle Database dependencies and SQL*Plus"
         sudo apt-get update
         # Install basic dependencies
-        sudo apt-get install -y wget unzip alien libaio1t64 libaio1 || sudo apt-get install -y wget unzip alien libaio1
+        sudo apt-get install -y wget unzip alien libaio1t64
+        
+        # Ensure libaio compatibility for SQL*Plus
+        sudo ln -sf /lib/x86_64-linux-gnu/libaio.so.1t64 /lib/x86_64-linux-gnu/libaio.so.1 || true
 
         # Download and install Oracle Instant Client with SQL*Plus
         cd /tmp
