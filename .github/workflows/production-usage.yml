@@ -1,0 +1,86 @@
+name: Production Oracle DB Testing
+
+# Real-world usage patterns for the Oracle DB Action
+# Choose ONE of these approaches based on your needs
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # OPTION 1: Simple single-version testing (most common)
+  oracle-tests:
+    name: Oracle Database Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Oracle Database Tests
+        uses: ./
+        with:
+          oracle-version: 21-slim
+          setup-scripts: sql/setup/*.sql
+          test-scripts: sql/tests/*.sql
+          cleanup-scripts: sql/cleanup/*.sql
+          run-checkov: true
+          fail-on-checkov: false
+
+  # OPTION 2: Matrix testing multiple Oracle versions (uncomment to use)
+  # oracle-matrix-tests:
+  #   name: Test Oracle v${{ matrix.oracle-version }}
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: read
+  #     security-events: write
+  #   strategy:
+  #     matrix:
+  #       oracle-version: [19-slim, 21-slim, 23-slim]
+  #     fail-fast: false
+  #   
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  #
+  #     - name: Run Oracle DB Tests
+  #       uses: ./
+  #       with:
+  #         oracle-version: ${{ matrix.oracle-version }}
+  #         setup-scripts: sql/setup/*.sql
+  #         test-scripts: sql/tests/*.sql
+  #         cleanup-scripts: sql/cleanup/*.sql
+
+  # OPTION 3: Separate security scan job (runs in parallel)
+  security-scan:
+    name: Security Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Security Scan Only
+        uses: ./
+        with:
+          oracle-version: 21-slim
+          setup-scripts: sql/setup/*.sql
+          test-scripts: sql/tests/*.sql
+          run-checkov: true
+          fail-on-checkov: true
+
+      - name: Upload SARIF results
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results_sarif.sarif
+        continue-on-error: true

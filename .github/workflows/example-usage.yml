@@ -1,6 +1,7 @@
 name: Example Oracle DB Test Workflow
 
 # This is an example workflow demonstrating the oracledb-action usage
+# Jobs run sequentially to avoid port conflicts and demonstrate different approaches
 # Note: For the reusable workflow example, you need to set up the ORACLE_PASSWORD secret
 # in your repository settings: Settings > Secrets and variables > Actions
 
@@ -46,6 +47,7 @@ jobs:
   # Example 2: Using the reusable workflow
   test-with-reusable-workflow:
     name: Test with Reusable Workflow
+    needs: test-with-action # Run after the first example
     permissions:
       contents: read
       actions: read
@@ -64,6 +66,7 @@ jobs:
   # Example 3: Matrix testing with multiple Oracle versions
   test-matrix:
     name: Test Multiple Versions
+    needs: test-with-reusable-workflow # Run after the second example
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -71,6 +74,7 @@ jobs:
     strategy:
       matrix:
         oracle-version: [21-slim, 23-slim]
+      max-parallel: 1  # Force sequential execution of matrix jobs
       fail-fast: false
 
     steps:
@@ -88,6 +92,7 @@ jobs:
   # Example 4: Security-focused workflow with Checkov
   security-scan:
     name: Security Scan
+    needs: test-matrix # Run after the matrix testing
     runs-on: ubuntu-latest
     permissions:
       contents: read
