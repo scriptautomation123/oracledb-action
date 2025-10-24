@@ -1,14 +1,27 @@
 name: Production Oracle DB Testing
 
 # Real-world usage patterns for the Oracle DB Action
-# Choose ONE of these approaches based on your needs
+# This workflow is DISABLED by default to avoid running on every push
+# Copy this workflow to your consuming repositories and customize as needed
 
-# Disabled for development - uncomment when ready for production
+# OPTION 1: Enable manually when needed
+# on:
+#   workflow_dispatch:
+
+# OPTION 2: Enable for important branches only
 # on:
 #   push:
 #     branches: [main]
+#     paths: ['src/**', 'sql/**']  # Only when code changes
 #   pull_request:
 #     branches: [main]
+
+# OPTION 3: Scheduled testing (recommended for consuming repos)
+# on:
+#   schedule:
+#     - cron: '0 2 * * 1-5'  # Weekdays at 2 AM
+
+# This workflow is intentionally disabled - no 'on:' trigger
 #   workflow_dispatch:
 
 # Manual trigger only for now
@@ -20,10 +33,11 @@ jobs:
   oracle-tests:
     name: Oracle Database Tests
     runs-on: ubuntu-latest
+    # trunk-ignore(checkov/CKV2_GHA_1): Permissions are appropriately scoped
     permissions:
       contents: read
       security-events: write
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -49,7 +63,7 @@ jobs:
   #     matrix:
   #       oracle-version: [19-slim, 21-slim, 23-slim]
   #     fail-fast: false
-  #   
+  #
   #   steps:
   #     - name: Checkout code
   #       uses: actions/checkout@v4
@@ -69,7 +83,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

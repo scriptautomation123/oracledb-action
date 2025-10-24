@@ -12,15 +12,15 @@ inputs:
   setup-scripts:
     description: Path to SQL setup scripts (comma-separated or glob pattern)
     required: false
-    default: 
+    default:
   test-scripts:
     description: Path to SQL test scripts (comma-separated or glob pattern)
     required: false
-    default: 
+    default:
   cleanup-scripts:
     description: Path to SQL cleanup scripts (comma-separated or glob pattern)
     required: false
-    default: 
+    default:
   oracle-password:
     description: Password for SYS and SYSTEM users
     required: false
@@ -52,7 +52,7 @@ inputs:
   sqlplus-commands:
     description: Additional SQL*Plus commands to run (semicolon-separated)
     required: false
-    default: 
+    default:
 
 outputs:
   oracle-container-id:
@@ -114,10 +114,11 @@ runs:
         echo "PATH=${ORACLE_HOME}/bin:\${PATH}" >> $GITHUB_ENV
         echo "${ORACLE_HOME}/lib" | sudo tee /etc/ld.so.conf.d/oracle-instantclient.conf
         sudo ldconfig
+
         # Install modern Oracle Python driver (still useful for scripts)
         pip install oracledb
 
-# Verify installations
+        # Verify installations
         echo "SQL*Plus version:"
         ${ORACLE_HOME}/bin/sqlplus -v || echo "SQL*Plus installed but version check failed"
         echo "::endgroup::"

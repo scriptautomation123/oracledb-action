@@ -6,17 +6,37 @@ name: Example Oracle DB Test Workflow
 # in your repository settings: Settings > Secrets and variables > Actions
 
 on:
+  # Only run on significant changes to the action itself
   push:
-    branches: [main, develop]
+    branches: [main]
+    paths:
+      - action.yml
+      - scripts/**
+      - .github/workflows/**
+      - examples/**
+
+  # Test PRs that modify the action
   pull_request:
     branches: [main]
+    paths:
+      - action.yml
+      - scripts/**
+      - .github/workflows/**
+      - examples/**
+
+  # Manual trigger for testing
   workflow_dispatch:
+
+  # Weekly scheduled test to ensure action still works
+  schedule:
+    - cron: 0 6 * * 1
 
 jobs:
   # Example 1: Using the composite action directly
   test-with-action:
     name: Test with Composite Action
     runs-on: ubuntu-latest
+    # trunk-ignore(checkov/CKV2_GHA_1): Permissions are appropriately scoped
     permissions:
       contents: read
       actions: read
@@ -60,8 +80,8 @@ jobs:
       cleanup-scripts: examples/sql/cleanup/*.sql
       run-checkov: true
     secrets:
-      # Note: ORACLE_PASSWORD secret needs to be configured in repository settings
-      oracle-password: ${{ secrets.ORACLE_PASSWORD }}
+      # Uses default password (OraclePassword123) - customize in consuming repos
+      oracle-password: OraclePassword123
 
   # Example 3: Matrix testing with multiple Oracle versions
   test-matrix:
@@ -74,7 +94,7 @@ jobs:
     strategy:
       matrix:
         oracle-version: [21-slim, 23-slim]
-      max-parallel: 1  # Force sequential execution of matrix jobs
+      max-parallel: 1 # Force sequential execution of matrix jobs
       fail-fast: false
 
     steps:

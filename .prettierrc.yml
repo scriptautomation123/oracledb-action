@@ -22,4 +22,4 @@ overrides:
       endOfLine: lf
       insertFinalNewline: true
       trimTrailingWhitespace: true
-      singleQuote: false  # Let YAML decide when quotes are needed
+      singleQuote: false # Let YAML decide when quotes are needed

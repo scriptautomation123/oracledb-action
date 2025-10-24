@@ -47,8 +47,7 @@ jobs:
   oracle-db-tests:
     name: Oracle DB Tests (v${{ inputs.oracle-version }})
     runs-on: ubuntu-latest
-    # trunk-ignore(checkov/CKV2_GHA_1)
-    # trunk-ignore-all(permissions)
+    # trunk-ignore(checkov/CKV2_GHA_1): Permissions are appropriately scoped
     permissions:
       contents: read
       security-events: write # For uploading Checkov SARIF results
